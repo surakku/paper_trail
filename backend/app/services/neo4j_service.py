@@ -53,7 +53,7 @@ class Neo4jService:
                     p.source = $source,
                     p.embedding = $embedding
                 """,
-                **paper,
+                paper,
             )
 
     async def upsert_author(self, author: dict[str, Any]) -> None:
@@ -64,7 +64,7 @@ class Neo4jService:
                 SET a.name = $name,
                     a.affiliation = $affiliation
                 """,
-                **author,
+                author,
             )
 
     async def link_author_paper(self, author_id: str, paper_id: str) -> None:
@@ -75,8 +75,7 @@ class Neo4jService:
                 MATCH (p:Paper {id: $paper_id})
                 MERGE (a)-[:AUTHORED]->(p)
                 """,
-                author_id=author_id,
-                paper_id=paper_id,
+                {"author_id": author_id, "paper_id": paper_id},
             )
 
     async def link_citation(self, citing_id: str, cited_id: str) -> None:
@@ -87,8 +86,7 @@ class Neo4jService:
                 MATCH (b:Paper {id: $cited_id})
                 MERGE (a)-[:CITES]->(b)
                 """,
-                citing_id=citing_id,
-                cited_id=cited_id,
+                {"citing_id": citing_id, "cited_id": cited_id},
             )
 
     # ------------------------------------------------------------------
@@ -104,7 +102,7 @@ class Neo4jService:
                     c.description = $description,
                     c.embedding = $embedding
                 """,
-                **concept,
+                concept,
             )
 
     async def link_paper_concept(self, paper_id: str, concept_id: str) -> None:
@@ -115,8 +113,7 @@ class Neo4jService:
                 MATCH (c:Concept {id: $concept_id})
                 MERGE (p)-[:DISCUSSES]->(c)
                 """,
-                paper_id=paper_id,
-                concept_id=concept_id,
+                {"paper_id": paper_id, "concept_id": concept_id},
             )
 
     async def link_concepts(self, concept_a_id: str, concept_b_id: str) -> None:
@@ -127,8 +124,7 @@ class Neo4jService:
                 MATCH (b:Concept {id: $b})
                 MERGE (a)-[:RELATED_TO]->(b)
                 """,
-                a=concept_a_id,
-                b=concept_b_id,
+                {"a": concept_a_id, "b": concept_b_id},
             )
 
     # ------------------------------------------------------------------
@@ -147,7 +143,7 @@ class Neo4jService:
                     w.published_date = $published_date,
                     w.embedding = $embedding
                 """,
-                **content,
+                content,
             )
 
     async def link_web_content_paper(self, web_id: str, paper_id: str) -> None:
@@ -158,8 +154,7 @@ class Neo4jService:
                 MATCH (p:Paper {id: $paper_id})
                 MERGE (w)-[:REFERENCES]->(p)
                 """,
-                web_id=web_id,
-                paper_id=paper_id,
+                {"web_id": web_id, "paper_id": paper_id},
             )
 
     async def link_web_content_concept(self, web_id: str, concept_id: str) -> None:
@@ -170,8 +165,7 @@ class Neo4jService:
                 MATCH (c:Concept {id: $concept_id})
                 MERGE (w)-[:DISCUSSES]->(c)
                 """,
-                web_id=web_id,
-                concept_id=concept_id,
+                {"web_id": web_id, "concept_id": concept_id},
             )
 
     # ------------------------------------------------------------------
@@ -187,7 +181,7 @@ class Neo4jService:
                 OPTIONAL MATCH (n)-[r]-(m)
                 RETURN n, r, m
                 """,
-                limit=limit,
+                {"limit": limit},
             )
             nodes: dict[str, dict] = {}
             edges: list[dict] = []
@@ -225,8 +219,7 @@ class Neo4jService:
                 RETURN p
                 LIMIT $limit
                 """,
-                query=query,
-                limit=limit,
+                {"query": query, "limit": limit},
             )
             papers = []
             async for record in result:
@@ -244,7 +237,7 @@ class Neo4jService:
                 OPTIONAL MATCH (a:Author)-[:AUTHORED]->(p)
                 RETURN p, collect(DISTINCT c.name) AS concepts, collect(DISTINCT a.name) AS authors
                 """,
-                ids=paper_ids,
+                {"ids": paper_ids},
             )
             context = []
             async for record in result:
@@ -264,9 +257,7 @@ class Neo4jService:
                        [rel IN relationships(path) | type(rel)] AS rel_types
                 LIMIT 5
                 """,
-                start_id=start_id,
-                end_id=end_id,
-                depth=max_depth,
+                {"start_id": start_id, "end_id": end_id, "depth": max_depth},
             )
             paths = []
             async for record in result:

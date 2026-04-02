@@ -12,6 +12,7 @@ load_dotenv()
 from app.services.neo4j_service import Neo4jService
 from app.services.llm_service import LLMService
 from app.services.embeddings_service import EmbeddingsService
+from app.pipelines.client import RocketRideClient
 from app.api.routes import chat, ingest, search, graph
 
 
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     app.state.neo4j = neo4j
     app.state.llm = LLMService()
     app.state.embeddings = EmbeddingsService()
+    app.state.rocketride = RocketRideClient()
 
     yield
 

@@ -5,6 +5,7 @@ from fastapi import Request
 from app.services.neo4j_service import Neo4jService
 from app.services.llm_service import LLMService
 from app.services.embeddings_service import EmbeddingsService
+from app.pipelines.client import RocketRideClient
 
 
 def get_neo4j(request: Request) -> Neo4jService:
@@ -17,3 +18,7 @@ def get_llm(request: Request) -> LLMService:
 
 def get_embeddings(request: Request) -> EmbeddingsService:
     return request.app.state.embeddings
+
+
+def get_rocketride(request: Request) -> RocketRideClient:
+    return request.app.state.rocketride

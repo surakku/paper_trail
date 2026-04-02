@@ -13,7 +13,8 @@ from app.services.web_search_service import WebSearchService
 from app.services.embeddings_service import EmbeddingsService
 from app.services.neo4j_service import Neo4jService
 from app.services.llm_service import LLMService
-from app.dependencies import get_neo4j, get_embeddings, get_llm
+from app.pipelines.client import RocketRideClient, PIPELINE_INGESTION
+from app.dependencies import get_neo4j, get_embeddings, get_llm, get_rocketride
 
 router = APIRouter(prefix="/api/ingest", tags=["ingest"])
 
@@ -101,6 +102,7 @@ async def ingest(
     neo4j: Neo4jService = Depends(get_neo4j),
     embeddings: EmbeddingsService = Depends(get_embeddings),
     llm: LLMService = Depends(get_llm),
+    rocketride: RocketRideClient = Depends(get_rocketride),
 ) -> IngestResponse:
     papers: list[dict[str, Any]] = []
     web_content: list[dict[str, Any]] = []
@@ -124,8 +126,19 @@ async def ingest(
         svc = WebSearchService()
         web_content = [svc._normalize(request.url, request.url, "")]
 
-    await _ingest_papers(papers, neo4j, embeddings, llm)
-    await _ingest_web_content(web_content, neo4j, embeddings)
+    # Run through RocketRide ingestion pipeline
+    async with rocketride as client:
+        pipeline_input = {
+            "papers": papers,
+            "web_content": web_content,
+            "source": request.source.value,
+        }
+        result = await client.run(PIPELINE_INGESTION, pipeline_input)
+    
+    # Fall back to direct ingestion if pipeline not available
+    if result.get("status") == "passthrough":
+        await _ingest_papers(papers, neo4j, embeddings, llm)
+        await _ingest_web_content(web_content, neo4j, embeddings)
 
     return IngestResponse(ingested=len(papers) + len(web_content), papers=papers, web_content=web_content)
 
@@ -136,9 +149,23 @@ async def ingest_pdf(
     neo4j: Neo4jService = Depends(get_neo4j),
     embeddings: EmbeddingsService = Depends(get_embeddings),
     llm: LLMService = Depends(get_llm),
+    rocketride: RocketRideClient = Depends(get_rocketride),
 ) -> IngestResponse:
     content = await file.read()
     svc = PDFService()
     paper = svc.extract(content, file.filename or "upload.pdf")
-    await _ingest_papers([paper], neo4j, embeddings, llm)
+    
+    # Run through RocketRide ingestion pipeline
+    async with rocketride as client:
+        pipeline_input = {
+            "papers": [paper],
+            "web_content": [],
+            "source": "pdf",
+        }
+        result = await client.run(PIPELINE_INGESTION, pipeline_input)
+    
+    # Fall back to direct ingestion if pipeline not available
+    if result.get("status") == "passthrough":
+        await _ingest_papers([paper], neo4j, embeddings, llm)
+    
     return IngestResponse(ingested=1, papers=[paper], web_content=[])
