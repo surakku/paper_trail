@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { PaperCard } from "./PaperCard";
 import { searchPapers } from "@/lib/api";
 import type { SearchResult } from "@/lib/types";
-import { Search, Plus, BookOpen, History, Cpu } from "lucide-react";
+import { Search, Plus, BookOpen, History, FileText } from "lucide-react";
 
 interface SidebarProps {
   onPaperSelect: (result: SearchResult) => void;
@@ -40,8 +40,8 @@ export function Sidebar({ onPaperSelect, onOpenIngest, history }: SidebarProps) 
     <aside className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800 w-64 shrink-0">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-zinc-800">
-        <Cpu size={18} className="text-blue-400" />
-        <span className="text-sm font-semibold text-zinc-100 tracking-tight">ResearchGraph</span>
+        <FileText size={18} className="text-amber-500" />
+        <span className="text-sm font-semibold text-zinc-100 tracking-tight">Paper Trail</span>
       </div>
 
       {/* Add button */}

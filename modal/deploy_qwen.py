@@ -30,6 +30,9 @@ image = (
         "vllm>=0.9.0",
         "huggingface_hub",
         "hf-transfer",
+        "fastapi",
+        "httpx",
+        "uvicorn",
     )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
 )
@@ -56,26 +59,94 @@ def _download_weights():
     image=image,
     gpu="A100-40GB",
     timeout=60 * 60,
-    scaledown_window=300,  # spin down after 5 min idle
+    scaledown_window=300,
     volumes={WEIGHTS_PATH: weights_volume},
 )
 @modal.asgi_app()
 def serve():
-    """OpenAI-compatible vLLM server for Qwen3.5-9B."""
-    from vllm.engine.arg_utils import AsyncEngineArgs
-    from vllm.entrypoints.openai.api_server import create_server
-
-    engine_args = AsyncEngineArgs(
-        model=MODEL_DIR,
-        tensor_parallel_size=1,
-        trust_remote_code=True,
-        reasoning_parser="qwen3",     # enables <think>…</think> parsing
-        max_model_len=32768,           # cap at 32K for practical latency
-        mem_fraction_static=0.8,
-        enable_auto_tool_choice=True,
+    """OpenAI-compatible vLLM server for Qwen3.5-9B via ASGI proxy."""
+    import os
+    import asyncio
+    import subprocess
+    import sys
+    import time
+    from fastapi import FastAPI
+    from fastapi.responses import StreamingResponse
+    import httpx
+    
+    os.environ["VLLM_ATTENTION_BACKEND"] = "flash_attn"
+    
+    # Start vLLM on local port 7000
+    print(f"[MODAL] Starting vLLM with model: {MODEL_DIR}")
+    proc = subprocess.Popen(
+        [
+            sys.executable, "-m", "vllm.entrypoints.openai.api_server",
+            "--model", MODEL_DIR,
+            "--tensor-parallel-size", "1",
+            "--max-model-len", "32768",
+            "--trust-remote-code",
+            "--host", "127.0.0.1",
+            "--port", "7000",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
-
-    return create_server(engine_args=engine_args)
+    
+    print(f"[MODAL] vLLM process started (PID: {proc.pid})")
+    
+    # Wait for vLLM to be ready (monitor startup)
+    async def monitor_startup():
+        start = time.time()
+        while time.time() - start < 300:  # 5 minute timeout
+            if proc.poll() is not None:
+                print(f"[MODAL] ERROR: vLLM exited with code {proc.poll()}")
+                return False
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get("http://127.0.0.1:7000/health", timeout=2)
+                    if resp.status_code == 200:
+                        print("[MODAL] vLLM is ready!")
+                        return True
+            except:
+                await asyncio.sleep(1)
+        return False
+    
+    # Create FastAPI app that proxies to vLLM
+    fastapi_app = FastAPI()
+    
+    @fastapi_app.get("/health")
+    async def health():
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get("http://127.0.0.1:7000/health", timeout=5)
+                return resp.json()
+        except:
+            return {"status": "starting"}
+    
+    @fastapi_app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+    async def proxy(path: str, request):
+        """Proxy all requests to vLLM."""
+        url = f"http://127.0.0.1:7000/{path}"
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                req_body = await request.body() if request.method != "GET" else None
+                resp = await client.request(
+                    request.method,
+                    url,
+                    content=req_body,
+                    headers=dict(request.headers) if request.headers else None,
+                )
+                return StreamingResponse(
+                    iter([resp.content]),
+                    status_code=resp.status_code,
+                    headers=dict(resp.headers),
+                )
+        except Exception as e:
+            print(f"[MODAL] Proxy error: {e}")
+            return {"error": str(e)}
+    
+    return fastapi_app
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const interSans = Inter({
+  variable: "--font-inter-sans",
   subsets: ["latin"],
 });
 
@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ResearchGraph — AI Research Assistant",
-  description: "Agentic AI research tool with Neo4j knowledge graph",
+  title: "Paper Trail — Research Discovery",
+  description: "Discover and organize research papers with an intelligent knowledge graph",
 };
 
 export default function RootLayout({
@@ -25,9 +25,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${interSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full flex flex-col bg-zinc-950 text-zinc-100">{children}</body>
+      <body className="h-full flex flex-col bg-zinc-950 text-zinc-100" style={{ fontFamily: 'var(--font-inter-sans)' }}>{children}</body>
     </html>
   );
 }

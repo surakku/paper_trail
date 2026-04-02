@@ -20,7 +20,12 @@ from app.api.routes import chat, ingest, search, graph
 async def lifespan(app: FastAPI):
     # Startup
     neo4j = Neo4jService()
-    await neo4j.create_constraints()
+    try:
+        await neo4j.create_constraints()
+        print("✓ Neo4j constraints created")
+    except Exception as e:
+        print(f"⚠ Neo4j connection failed (will retry on first request): {e}")
+    
     app.state.neo4j = neo4j
     app.state.llm = LLMService()
     app.state.embeddings = EmbeddingsService()
