@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "name": "Discovery Pipeline",
+  "description": "Finds connections between concepts/papers in the knowledge graph and explains them.",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "input",
+      "label": "Topic or Paper ID",
+      "config": {}
+    },
+    {
+      "id": "graph_traverse",
+      "type": "python",
+      "label": "Graph Path Finder",
+      "config": {
+        "code": "# Run Cypher shortestPath / neighborhood queries, return paths + related papers"
+      }
+    },
+    {
+      "id": "llm",
+      "type": "llm",
+      "label": "Connection Explainer",
+      "config": {
+        "model": "{{MODAL_LLM_MODEL}}",
+        "base_url": "{{MODAL_LLM_URL}}",
+        "stream": true,
+        "system_prompt": "Explain the connections between these research concepts and papers, highlighting surprising relationships."
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "label": "Discovery Report",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {"from": "input", "to": "graph_traverse"},
+    {"from": "graph_traverse", "to": "llm"},
+    {"from": "llm", "to": "output"}
+  ]
+}

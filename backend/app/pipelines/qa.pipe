@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "name": "Q&A Pipeline",
+  "description": "Retrieves relevant graph context and generates a streamed answer via the Modal LLM.",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "input",
+      "label": "User Question",
+      "config": {}
+    },
+    {
+      "id": "graph_retrieval",
+      "type": "python",
+      "label": "Graph Context Retrieval",
+      "config": {
+        "code": "# Fetch relevant papers from Neo4j based on question keywords\n# Returns: list of paper dicts with title, abstract, concepts"
+      }
+    },
+    {
+      "id": "llm",
+      "type": "llm",
+      "label": "LLM Answer Generation",
+      "config": {
+        "model": "{{MODAL_LLM_MODEL}}",
+        "base_url": "{{MODAL_LLM_URL}}",
+        "stream": true,
+        "system_prompt": "You are an expert research assistant. Answer using the provided knowledge graph context. Cite papers as [1], [2], etc."
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "label": "Streamed Answer",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {"from": "input", "to": "graph_retrieval"},
+    {"from": "graph_retrieval", "to": "llm"},
+    {"from": "llm", "to": "output"}
+  ]
+}

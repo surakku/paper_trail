@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "name": "Web Search Pipeline",
+  "description": "Searches the web for blog posts and articles on a topic, then ingests them into Neo4j.",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "input",
+      "label": "Search Topic",
+      "config": {}
+    },
+    {
+      "id": "web_search",
+      "type": "python",
+      "label": "Web Search (Tavily/DuckDuckGo)",
+      "config": {
+        "code": "# Call web_search_service.search(topic), return list of web content dicts"
+      }
+    },
+    {
+      "id": "embed",
+      "type": "python",
+      "label": "Embed Content",
+      "config": {
+        "code": "# Call embeddings_service.embed(content) for each result"
+      }
+    },
+    {
+      "id": "ingest_neo4j",
+      "type": "python",
+      "label": "Write to Neo4j",
+      "config": {
+        "code": "# Upsert WebContent nodes via neo4j_service.upsert_web_content()"
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "label": "Ingested Web Content",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {"from": "input", "to": "web_search"},
+    {"from": "web_search", "to": "embed"},
+    {"from": "embed", "to": "ingest_neo4j"},
+    {"from": "ingest_neo4j", "to": "output"}
+  ]
+}

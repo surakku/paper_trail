@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "name": "Summarization Pipeline",
+  "description": "Fetches a paper by ID from Neo4j and generates a structured summary.",
+  "nodes": [
+    {
+      "id": "input",
+      "type": "input",
+      "label": "Paper ID",
+      "config": {}
+    },
+    {
+      "id": "fetch_paper",
+      "type": "python",
+      "label": "Fetch Paper from Neo4j",
+      "config": {
+        "code": "# Query Neo4j for paper by ID, return title + abstract + full_text"
+      }
+    },
+    {
+      "id": "llm",
+      "type": "llm",
+      "label": "Structured Summary Generator",
+      "config": {
+        "model": "{{MODAL_LLM_MODEL}}",
+        "base_url": "{{MODAL_LLM_URL}}",
+        "stream": true,
+        "system_prompt": "Produce a structured summary with: TL;DR, Key Contributions, Methods, Results, Limitations."
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "label": "Summary",
+      "config": {}
+    }
+  ],
+  "edges": [
+    {"from": "input", "to": "fetch_paper"},
+    {"from": "fetch_paper", "to": "llm"},
+    {"from": "llm", "to": "output"}
+  ]
+}
