@@ -174,35 +174,57 @@ class Neo4jService:
 
     async def get_graph(self, limit: int = 200) -> dict[str, Any]:
         async with self._driver.session() as session:
-            result = await session.run(
+            # Step 1: Get nodes up to the limit
+            nodes_result = await session.run(
                 """
                 MATCH (n)
-                WITH n LIMIT $limit
-                OPTIONAL MATCH (n)-[r]-(m)
-                RETURN n, r, m
+                RETURN n, labels(n)[0] as node_type
+                LIMIT $limit
                 """,
                 {"limit": limit},
             )
             nodes: dict[str, dict] = {}
+            node_ids_set: set[str] = set()
+            
+            async for record in nodes_result:
+                node = record["n"]
+                node_type = record["node_type"]
+                node_id = node.element_id
+                node_ids_set.add(node_id)
+                
+                nodes[node_id] = {
+                    "id": node_id,
+                    "label": node.get("title") or node.get("name") or str(node_id)[:20],
+                    "type": node_type,
+                    "properties": dict(node),
+                }
+            
+            # Step 2: Get ALL relationships and filter for those connecting our limited nodes
             edges: list[dict] = []
-            async for record in result:
-                for node_key in ["n", "m"]:
-                    node = record[node_key]
-                    if node and node.element_id not in nodes:
-                        nodes[node.element_id] = {
-                            "id": node.element_id,
-                            "label": node.get("title") or node.get("name") or node.element_id,
-                            "type": list(node.labels)[0] if node.labels else "Unknown",
-                            "properties": dict(node),
-                        }
+            edges_result = await session.run(
+                """
+                MATCH (n)-[r]->(m)
+                RETURN n, r, m
+                """
+            )
+            
+            async for record in edges_result:
+                start_node = record["n"]
                 rel = record["r"]
-                if rel:
+                end_node = record["m"]
+                
+                start_id = start_node.element_id
+                end_id = end_node.element_id
+                
+                # Only include edges where both nodes are in our limited set
+                if start_id in node_ids_set and end_id in node_ids_set:
                     edges.append({
-                        "source": rel.start_node.element_id,
-                        "target": rel.end_node.element_id,
+                        "source": start_id,
+                        "target": end_id,
                         "relationship": rel.type,
                         "properties": dict(rel),
                     })
+            
             return {"nodes": list(nodes.values()), "edges": edges}
 
     # ------------------------------------------------------------------

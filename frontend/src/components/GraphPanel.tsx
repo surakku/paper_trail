@@ -36,13 +36,72 @@ export function GraphPanel({ onNodeSelect }: GraphPanelProps) {
   const [selected, setSelected] = useState<GraphNode | null>(null);
   const graphRef = useRef<any>(null);
 
+  // Assign hierarchical y-positions based on node type
+  function applyHierarchicalLayout(data: GraphData): GraphData {
+    const layerHeights: Record<string, number> = {
+      Author: -300,
+      Paper: 0,
+      Concept: 300,
+      Institution: 400,
+      WebContent: 500,
+    };
+
+    // Count nodes per layer
+    const layerCounts: Record<number, number> = {};
+    const layerIndices: Record<number, number> = {};
+    
+    data.nodes.forEach(node => {
+      const layer = layerHeights[node.type] ?? 0;
+      layerCounts[layer] = (layerCounts[layer] ?? 0) + 1;
+    });
+
+    // Assign positions with spreading
+    const nodesWithLayout = data.nodes.map(node => {
+      const layer = layerHeights[node.type] ?? 0;
+      const totalInLayer = layerCounts[layer];
+      const indexInLayer = layerIndices[layer] ?? 0;
+      layerIndices[layer] = indexInLayer + 1;
+      
+      // Y-position based on layer (fixed vertically)
+      const yPosition = layer;
+      
+      // X-position spread out with significant gaps between nodes in the same layer
+      const xPosition = (indexInLayer - totalInLayer / 2) * (400 / Math.max(totalInLayer, 1));
+      
+      return {
+        ...node,
+        x: xPosition,
+        y: yPosition,
+        fy: yPosition, // Lock Y position to maintain hierarchy
+      };
+    });
+
+    return { nodes: nodesWithLayout, links: data.links };
+  }
+
   async function loadGraph() {
     setLoading(true);
     try {
       const data = await getGraph(300);
-      setGraphData(data);
-    } catch {
-      // keep empty
+      console.log("📊 Graph Data Loaded:", {
+        nodesCount: data.nodes.length,
+        linksCount: data.links.length,
+      });
+      
+      // Verify links reference valid nodes
+      const nodeIds = new Set(data.nodes.map(n => n.id));
+      const invalidLinks = data.links.filter(l => !nodeIds.has(l.source) || !nodeIds.has(l.target));
+      if (invalidLinks.length > 0) {
+        console.warn("⚠️ Invalid links found:", invalidLinks);
+      } else {
+        console.log("✅ All links reference valid nodes");
+      }
+      
+      // Apply hierarchical layout
+      const layoutData = applyHierarchicalLayout(data);
+      setGraphData(layoutData);
+    } catch (error) {
+      console.error("Error loading graph:", error);
     } finally {
       setLoading(false);
     }
@@ -155,14 +214,29 @@ export function GraphPanel({ onNodeSelect }: GraphPanelProps) {
             nodeId="id"
             nodeCanvasObject={nodePaint}
             nodeCanvasObjectMode={() => "replace"}
-            linkColor={() => "rgba(113,113,122,0.3)"}
-            linkWidth={0.5}
+            nodeStrength={-500}
+            linkLength={150}
+            linkColor={() => "rgba(255, 255, 255, 0.8)"}
+            linkWidth={2.5}
+            linkLabel={(link: any) => link.relationship || ""}
+            linkLineDash={(link: any) => {
+              return link.relationship === "REFERENCES" ? [5, 5] : undefined;
+            }}
             backgroundColor="#09090b"
             onNodeClick={handleNodeClick}
             nodeLabel={(node: any) => `${node.type}: ${node.label}`}
-            linkLabel={(link: any) => link.relationship}
-            enableNodeDrag
-            enableZoomInteraction
+            enableNodeDrag={true}
+            enableZoomInteraction={true}
+            enablePanInteraction={true}
+            d3AlphaDecay={0.05}
+            d3AlphaMin={0.0001}
+            d3VelocityDecay={0.2}
+            d3MaxEffectiveDistance={800}
+            minZoom={0.1}
+            maxZoom={20}
+            warmupTicks={100}
+            cooldownTicks={200}
+            onEngineStop={() => console.log("✅ Graph engine stopped")}
           />
         )}
       </div>
