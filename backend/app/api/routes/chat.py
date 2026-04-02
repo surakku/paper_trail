@@ -19,7 +19,7 @@ _INTENT_PATTERNS: dict[ChatIntent, list[str]] = {
     ChatIntent.SUMMARIZE: [r"\bsummar", r"\bsummarise", r"\bsum up", r"\boverview of"],
     ChatIntent.DISCOVER: [r"\bconnect", r"\brelat", r"\blink", r"\bbetween\b", r"\bhow does .+ relate"],
     ChatIntent.INGEST: [r"\badd\b", r"\bingest\b", r"\bimport\b", r"\bsearch for papers"],
-    ChatIntent.SEARCH: [r"\bfind\b", r"\bsearch\b", r"\blook for\b", r"\bshow me papers"],
+    ChatIntent.SEARCH: [r"\bfind papers\b", r"\bsearch for papers\b", r"\blook for papers\b", r"\bshow me papers\b", r"\bfetch papers\b"],
 }
 
 
