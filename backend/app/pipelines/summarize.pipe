@@ -1,43 +1,106 @@
 {
-  "version": "1.0",
+  "version": 1,
   "name": "Summarization Pipeline",
   "description": "Fetches a paper by ID from Neo4j and generates a structured summary.",
-  "nodes": [
+  "components": [
     {
       "id": "input",
-      "type": "input",
-      "label": "Paper ID",
-      "config": {}
-    },
-    {
-      "id": "fetch_paper",
-      "type": "python",
-      "label": "Fetch Paper from Neo4j",
-      "config": {
-        "code": "# Query Neo4j for paper by ID, return title + abstract + full_text"
+      "provider": "input",
+      "config": {},
+      "ui": {
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "measured": {
+          "width": 150,
+          "height": 37
+        },
+        "nodeType": "default",
+        "formDataValid": true
       }
     },
     {
-      "id": "llm",
-      "type": "llm",
-      "label": "Structured Summary Generator",
+      "id": "llm_summary",
+      "provider": "openai",
       "config": {
-        "model": "{{MODAL_LLM_MODEL}}",
-        "base_url": "{{MODAL_LLM_URL}}",
-        "stream": true,
-        "system_prompt": "Produce a structured summary with: TL;DR, Key Contributions, Methods, Results, Limitations."
+        "base_url": "https://magiswarm--qwen35-9b-serve.modal.run/v1",
+        "model": "qwen35-9b",
+        "temperature": 0.5,
+        "instructions": "Produce a structured summary with: TL;DR, Key Contributions, Methods, Results, Limitations."
+      },
+      "ui": {
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "measured": {
+          "width": 150,
+          "height": 37
+        },
+        "nodeType": "default",
+        "formDataValid": true
       }
     },
     {
       "id": "output",
-      "type": "output",
-      "label": "Summary",
-      "config": {}
+      "provider": "output",
+      "config": {},
+      "ui": {
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "measured": {
+          "width": 150,
+          "height": 37
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "db_neo4j_1",
+      "provider": "db_neo4j",
+      "config": {
+        "profile": "default",
+        "default": {
+          "auth_method": "userpass",
+          "database": "neo4j",
+          "db_description": "",
+          "max_attempts": 5,
+          "uri": "neo4j://localhost:7687"
+        }
+      },
+      "ui": {
+        "position": {
+          "x": 168,
+          "y": -66
+        },
+        "measured": {
+          "width": 150,
+          "height": 121
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
     }
   ],
-  "edges": [
-    {"from": "input", "to": "fetch_paper"},
-    {"from": "fetch_paper", "to": "llm"},
-    {"from": "llm", "to": "output"}
-  ]
+  "connections": [
+    {
+      "source": "input",
+      "target": "llm_summary"
+    },
+    {
+      "source": "llm_summary",
+      "target": "output"
+    }
+  ],
+  "project_id": "05829768-67dc-4f81-b911-0959ab0e5a27",
+  "viewport": {
+    "x": -184.5,
+    "y": 262,
+    "zoom": 2
+  },
+  "docRevision": 2
 }

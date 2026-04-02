@@ -2,42 +2,43 @@
   "version": "1.0",
   "name": "Discovery Pipeline",
   "description": "Finds connections between concepts/papers in the knowledge graph and explains them.",
-  "nodes": [
+  "components": [
     {
       "id": "input",
       "type": "input",
-      "label": "Topic or Paper ID",
+      "provider": "input",
+      "label": "Input",
       "config": {}
     },
     {
-      "id": "graph_traverse",
-      "type": "python",
-      "label": "Graph Path Finder",
-      "config": {
-        "code": "# Run Cypher shortestPath / neighborhood queries, return paths + related papers"
-      }
-    },
-    {
-      "id": "llm",
+      "id": "llm_discovery",
       "type": "llm",
+      "provider": "openai",
       "label": "Connection Explainer",
       "config": {
-        "model": "{{MODAL_LLM_MODEL}}",
-        "base_url": "{{MODAL_LLM_URL}}",
-        "stream": true,
-        "system_prompt": "Explain the connections between these research concepts and papers, highlighting surprising relationships."
+        "base_url": "https://magiswarm--qwen35-9b-serve.modal.run/v1",
+        "model": "qwen35-9b",
+        "temperature": 0.7,
+        "instructions": "Explain the connections between these research concepts and papers, highlighting surprising relationships."
       }
     },
     {
       "id": "output",
       "type": "output",
-      "label": "Discovery Report",
+      "provider": "output",
+      "label": "Output",
       "config": {}
     }
   ],
-  "edges": [
-    {"from": "input", "to": "graph_traverse"},
-    {"from": "graph_traverse", "to": "llm"},
-    {"from": "llm", "to": "output"}
-  ]
+  "connections": [
+    {
+      "source": "input",
+      "target": "llm_discovery"
+    },
+    {
+      "source": "llm_discovery",
+      "target": "output"
+    }
+  ],
+  "project_id": "ad7b34f4-6dbf-4fc2-ad72-c2f8dcb8277e"
 }

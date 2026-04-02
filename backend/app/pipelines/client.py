@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Any
@@ -39,9 +40,13 @@ class RocketRideClient:
         try:
             from rocketride import RocketRideClient as _SDK
             self._client = _SDK(uri=self._uri)
-            await self._client.__aenter__()
+            # Connect with 5 second timeout (engine probably isn't running)
+            await asyncio.wait_for(self._client.__aenter__(), timeout=5.0)
+        except asyncio.TimeoutError:
+            # RocketRide engine connection timeout — fallback to direct mode
+            self._client = None
         except Exception:
-            # RocketRide engine not running — fallback to direct mode
+            # RocketRide engine not running or other error — fallback to direct mode
             self._client = None
         return self
 

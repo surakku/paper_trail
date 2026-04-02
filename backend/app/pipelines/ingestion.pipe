@@ -2,61 +2,43 @@
   "version": "1.0",
   "name": "Ingestion Pipeline",
   "description": "Fetches papers from ArXiv/Semantic Scholar/PDF/URL, extracts concepts, embeds, and writes to Neo4j.",
-  "nodes": [
+  "components": [
     {
       "id": "input",
       "type": "input",
-      "label": "Ingest Request",
-      "config": {
-        "schema": {"source": "string", "query": "string", "url": "string", "max_results": "int"}
-      }
+      "provider": "input",
+      "label": "Input",
+      "config": {}
     },
     {
-      "id": "fetch",
-      "type": "python",
-      "label": "Fetch from Source",
-      "config": {
-        "code": "# Route to arxiv_service / semantic_scholar_service / pdf_service / web_search_service based on source"
-      }
-    },
-    {
-      "id": "embed",
-      "type": "python",
-      "label": "Generate Embeddings",
-      "config": {
-        "code": "# Embed title + abstract for each item via embeddings_service"
-      }
-    },
-    {
-      "id": "extract_concepts",
+      "id": "llm_concepts",
       "type": "llm",
+      "provider": "openai",
       "label": "Concept Extraction",
       "config": {
-        "model": "{{MODAL_LLM_MODEL}}",
-        "base_url": "{{MODAL_LLM_URL}}",
-        "system_prompt": "Extract 3-8 key research concepts from this paper abstract as a JSON array of strings."
-      }
-    },
-    {
-      "id": "write_graph",
-      "type": "python",
-      "label": "Write to Neo4j",
-      "config": {
-        "code": "# Upsert Paper/Author/Concept nodes and relationships via neo4j_service"
+        "base_url": "https://magiswarm--qwen35-9b-serve.modal.run/v1",
+        "model": "qwen35-9b",
+        "temperature": 0.3,
+        "instructions": "Extract 3-8 key research concepts from this paper abstract as a JSON array of strings."
       }
     },
     {
       "id": "output",
       "type": "output",
-      "label": "Ingestion Result",
+      "provider": "output",
+      "label": "Output",
       "config": {}
     }
   ],
-  "edges": [
-    {"from": "input", "to": "fetch"},
-    {"from": "fetch", "to": "embed"},
-    {"from": "embed", "to": "extract_concepts"},
-    {"from": "extract_concepts", "to": "write_graph"},
-    {"from": "write_graph", "to": "output"}
-  ]
+  "connections": [
+    {
+      "source": "input",
+      "target": "llm_concepts"
+    },
+    {
+      "source": "llm_concepts",
+      "target": "output"
+    }
+  ],
+  "project_id": "ce2fea0b-1f1f-4b36-bd4e-7c99b5cbc322"
 }
