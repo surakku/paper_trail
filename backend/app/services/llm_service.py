@@ -22,8 +22,8 @@ class LLMService:
     async def chat(
         self,
         messages: list[dict[str, str]],
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
+        temperature: float = 1.0,   # Qwen3.5 thinking mode default
+        max_tokens: int = 8192,
     ) -> str:
         response = await self._client.chat.completions.create(
             model=self._model,
@@ -36,8 +36,8 @@ class LLMService:
     async def stream(
         self,
         messages: list[dict[str, str]],
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
+        temperature: float = 1.0,   # Qwen3.5 thinking mode default
+        max_tokens: int = 8192,
     ) -> AsyncIterator[str]:
         stream = await self._client.chat.completions.create(
             model=self._model,
